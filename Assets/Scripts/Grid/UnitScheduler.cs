@@ -9,7 +9,7 @@ public interface UnitSchedulable {
 public class UnitScheduler {
 	public static readonly int MAX_SPEED = 99;
 
-	public UnitSchedulable CurrUnit { get { return this.curr_unit; } }
+	public UnitSchedulable ActiveUnit { get { return this.curr_unit; } }
 	
 	private UnitSchedulable curr_unit = null;
 	private IList<UnitSchedulable> units;

@@ -1,4 +1,5 @@
-﻿
+﻿using System.Collections.Generic;
+
 public class SquareGrid {
 	private SquareGridSquare[,] squares;
 	public int Rows { get { return this.num_rows; } }
@@ -59,6 +60,45 @@ public class SquareGrid {
 		} else {
 			return false;
 		}
+	}
+
+	public IEnumerable<SquareGridSquare> GetAdjacentRadius(SquareGridSquare square, int radius) {
+		int row;
+		int col;
+		var adj_list = new List<SquareGridSquare>();
+
+		if (radius == 0) {
+			return null;
+		}
+
+		/**
+		 * starting at x,y with radius 3
+		 * x - 3, y + [0, 0]
+		 * x - 2, y + [-1, 1] 
+		 * x - 1, y + [-2, 2] 
+		 * x, y + [-3, 3]
+		 * x + 1, [-2, 2]
+		 */
+		UnityEngine.Debug.Log (square);
+		for (row = square.Row - radius; row <= square.Row + radius; row++) {
+			int dist = row - square.Row;
+			if (dist < 0) {
+				dist = radius + dist;
+			} else {
+				dist = radius - dist;
+			}
+			for (col = square.Col - dist; col <= square.Col + dist; col++) {
+				SquareGridSquare adj;
+
+				adj = this.GetSquare(row, col);
+				if ((adj != null) && (adj != square)) {
+					UnityEngine.Debug.Log(adj);
+					adj_list.Add(adj);
+				}
+			}
+		}
+
+		return adj_list;
 	}
 
 	public delegate void DebugPrint(object msg);

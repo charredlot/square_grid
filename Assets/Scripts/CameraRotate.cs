@@ -6,6 +6,8 @@ public class CameraRotate : MonoBehaviour {
 	public static readonly float CAMERA_TILT_SPEED = 25.0f;
 	public static readonly float CAMERA_ZOOM_SPEED = 16.0f;
 	public static readonly float CAMERA_TRANSLATE_SPEED = 10.0f;
+
+	public bool DEBUG_CAMERA = true;
 	public Vector3 center = new Vector3(0,0,0);
 	public Vector3 look_target;
 	public bool use_mouse = true;
@@ -146,11 +148,15 @@ public class CameraRotate : MonoBehaviour {
 
 
 
-		GameObject g = GameObject.Find ("camera_center");
-		g.transform.position = this.center;
+		if (this.DEBUG_CAMERA) {
+			GameObject g;
 
-		g = GameObject.Find ("look_target");
-		g.transform.position = this.curr_look_target;
+			g = GameObject.Find ("camera_center");
+			g.transform.position = this.center;
+
+			g = GameObject.Find ("look_target");
+			g.transform.position = this.curr_look_target;
+		}
 	}
 
 }

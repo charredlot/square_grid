@@ -4,7 +4,8 @@ using System.Collections.Generic;
 
 public class USquareGridSquare : SquareGridSquare {
 	public readonly Vector3 WorldCenterCoords;
-	
+	public USelectableMixin Selectable;
+
 	public USquareGridSquare(int row, int col, int height, Vector3 world_center_coords) : 
 		base(row, col, height) {
 		this.WorldCenterCoords = world_center_coords;

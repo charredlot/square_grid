@@ -22,7 +22,7 @@ public abstract class USquareGridUnit : SquareGridUnit {
 	public USquareGridUnit(UnitID id, PrefabCache cache, string prefab_file) : base(id) {
 		Object prefab;
 
-		prefab = cache.GetUnitPrefab(prefab_file);
+		prefab = cache.GetPrefab(prefab_file);
 		this.g = (GameObject)GameObject.Instantiate(prefab, new Vector3(0,0,0), Quaternion.identity);
 		this.g.SetActive (false);
 		this.g_is_active = false;

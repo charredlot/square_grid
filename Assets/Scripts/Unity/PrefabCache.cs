@@ -10,7 +10,7 @@ public class PrefabCache {
 		this.prefabs = new Dictionary<string, Object>();
 	}
 
-	public Object GetUnitPrefab(string prefab_file) {
+	public Object GetPrefab(string prefab_file) {
 		Object value;
 
 		if (this.prefabs.TryGetValue(prefab_file, out value)) {
