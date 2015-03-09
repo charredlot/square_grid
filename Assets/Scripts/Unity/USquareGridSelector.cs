@@ -2,94 +2,22 @@
 using System.Collections;
 using System.Collections.Generic;
 
-public class USelectableCache {
-	private Object prefab;
-	private Stack<GameObject> objs;
-
-	public USelectableCache(Object prefab) {
-		this.objs = new Stack<GameObject>();
-		this.prefab = prefab;
-	}
-
-	private GameObject AllocGameObject(USquareGridSquare us) {
-		GameObject g;
-
-		if (this.objs.Count == 0) {
-			g = (GameObject)GameObject.Instantiate(this.prefab,
-			                                   new Vector3(0,0,0), Quaternion.identity);
-		} else {
-			g = this.objs.Pop();
-		}
-
-		g.transform.position = USelectableCache.PositionFromSquare(us);
-		g.SetActive(true);
-		return g;
-	}
-
-	private void FreeGameObject(GameObject g) {
-		if (g != null) {
-			g.SetActive(false);
-			this.objs.Push (g);
-		}
-	}
-
-	private USelectableMixin SelectableFactory(USquareGridSquare us) {
-		return new USelectableMixin(this.AllocGameObject(us), this);
-	}
-
-	private void ChangeCache(USquareGridSquare us, USelectableMixin sel) {
-		this.ClearSelectable(sel);
-		sel.cache = this;
-		sel.g = this.AllocGameObject(us);
-	}
-
-	/* TODO: make part of the selectable interface */
-	private static Vector3 PositionFromSquare(USquareGridSquare us)	{
-		/* x-z plane, hardcode height for now */
-		return new Vector3(us.WorldCenterCoords.x, 4.0f, us.WorldCenterCoords.z);
-	}
-	
-	public void SelectSquare(USquareGridSquare us) {
-		var sel = us.Selectable;
-		
-		if (sel == null) {
-			us.Selectable = this.SelectableFactory(us);
-		} else {
-			this.ChangeCache(us, sel);
-		}
-	}
-
-	public void ClearSelectable(USelectableMixin sel) {
-		if (sel.g != null) {
-			sel.cache.FreeGameObject(sel.g);
-			sel.g = null;
-		}	
-	}
-};
-
 public class USquareGridSelector {
 	/* for inspector */
 	public readonly string ACTIVE_UNIT_PREFAB = "SelectActiveUnit.prefab";
 	public readonly string MOVEABLE_PREFAB = "HighlightMoveableSquare.prefab";
 	public readonly string MOVE_TARGET_PREFAB = "HighlightMoveTarget.prefab";
 
-	public enum SelectionType {
-		NONE,
-		ACTIVE_UNIT,
-		MOVEABLE,
-		MOVE_TARGET,
-	};
-
 	private PrefabCache prefab_cache;
 
 	private USelectableCache active_unit_cache;
-	private USelectableMixin active_unit_selected;
+	private ISelectable active_unit_selected;
 
 	private USelectableCache moveable_cache;
-	private IList<USelectableMixin> moveable;
+	private HashSet<ISelectable> moveable;
 
 	private USelectableCache move_target_cache;
-	private USelectableMixin move_target_selected;
+	private ISelectable move_target_selected;
 
 	// Use this for initialization
 	public USquareGridSelector(PrefabCache prefab_cache) {
@@ -102,44 +30,49 @@ public class USquareGridSelector {
 		this.move_target_cache = 
 			new USelectableCache(this.prefab_cache.GetPrefab(this.MOVE_TARGET_PREFAB));
 
-		this.moveable = new List<USelectableMixin>();
+		this.moveable = new HashSet<ISelectable>();
 	}
 
-	public USelectableMixin SelectSquare(USquareGridSquare us, USelectableCache cache) {
-		cache.SelectSquare(us);
-		return us.Selectable;
-	}
-
-	public void SelectActiveUnitSquare(USquareGridSquare us, USquareGridUnit unit) {
+	public void SelectActiveUnit(USquareGridSquare us) {
 		if (this.active_unit_selected != null) {
-			this.active_unit_selected.Cleanup();
+			this.active_unit_selected.SelectableM.Cleanup();
 			this.active_unit_selected = null;
 		}
-		this.active_unit_selected = this.SelectSquare (us, this.active_unit_cache);
+		this.active_unit_cache.Select(us);
+		this.active_unit_selected = us;
 	}
 
 	public void SelectMoveTarget(USquareGridSquare us) {
-		if (this.move_target_selected != null) {
-			this.move_target_selected.Cleanup();
-			this.move_target_selected = null;
+		var old_move_target = this.move_target_selected;
+
+		if (old_move_target != null) {
+			old_move_target.SelectableM.Cleanup();		
+			/* assume old_move_target was always a legit moveable */
+			this.moveable_cache.Select (old_move_target);		
 		}
-		this.move_target_selected = this.SelectSquare (us, this.move_target_cache);
+
+		/**
+		 * FIXME: should be responsibility of caller to check that square is moveable,
+		 * but check it here for now
+		 */
+		if (this.moveable.Contains (us)) {
+			this.move_target_cache.Select(us);
+			this.move_target_selected = us;
+		}
 	}
 
 	public void HighlightMoveableSquares(IEnumerable<USquareGridSquare> squares) {
-		if (squares == null) {
-			return;
-		}
-
-		/* TODO: we can reuse the projectors, we just need to store them */
-		foreach (USelectableMixin sel in this.moveable) {
-			sel.Cleanup();
+		foreach (ISelectable sel in this.moveable) {
+			sel.SelectableM.Cleanup();
 		}
 		this.moveable.Clear();
+		this.move_target_selected = null;
 
-		foreach (USquareGridSquare us in squares) {
-			this.SelectSquare (us, this.moveable_cache);
-			this.moveable.Add (us.Selectable);
+		if (squares != null) {
+			foreach (USquareGridSquare us in squares) {
+				this.moveable_cache.Select(us);
+				this.moveable.Add (us);
+			}
 		}
 	}
 }

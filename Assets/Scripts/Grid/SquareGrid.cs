@@ -79,7 +79,6 @@ public class SquareGrid {
 		 * x, y + [-3, 3]
 		 * x + 1, [-2, 2]
 		 */
-		UnityEngine.Debug.Log (square);
 		for (row = square.Row - radius; row <= square.Row + radius; row++) {
 			int dist = row - square.Row;
 			if (dist < 0) {
@@ -92,7 +91,6 @@ public class SquareGrid {
 
 				adj = this.GetSquare(row, col);
 				if ((adj != null) && (adj != square)) {
-					UnityEngine.Debug.Log(adj);
 					adj_list.Add(adj);
 				}
 			}
