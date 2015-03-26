@@ -39,16 +39,21 @@ public class USquareGridGame : SquareGridGame {
 		}
 	}
 
-	public USquareGridUnit ActiveUnit {
-		get { return (USquareGridUnit)this.unit_scheduler.ActiveUnit; }
+	public USquareGridUnit UActiveUnit {
+		get { return (USquareGridUnit)this.ActiveUnit; }
 	}
 
-	public IEnumerable<USquareGridSquare> GetMoveableArea() {
-		var unit = this.ActiveUnit;
-		var us = (USquareGridSquare)unit.Square;
+	public IEnumerable<USquareGridSquare> UGetMoveableArea(USquareGridUnit unit) {
+		foreach (var s in unit.GetMoveableArea(this.grid)) {
+			yield return (USquareGridSquare)s;
+		}
+	}
 
-		/* TODO */
-
-		return from s in this.grid.GetAdjacentRadius(us, 3) select (USquareGridSquare)s;
+	public override bool MoveUnit(SquareGridUnit unit, SquareGridSquare s) {
+		return this.grid.MoveUnit(unit, s);
+	}
+	
+	public override bool MoveUnit(SquareGridUnit piece, int row, int col) {
+		return this.grid.MoveUnit(piece, row, col);
 	}
 }

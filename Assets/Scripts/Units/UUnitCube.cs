@@ -6,7 +6,8 @@ public class UUnitCube : USquareGridUnit {
 
 	public UUnitCube(UnitID id, PrefabCache cache) : 
 		base(id, cache, UUnitCube.PREFAB_FILE) {
-		
+		this.move_range = 3;
+		this.jump_range = 1;
 	}
 	
 	public override int GetSpeed() {

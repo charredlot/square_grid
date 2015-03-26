@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,16 +7,17 @@ public class UGame : MonoBehaviour {
 	/* For inspector */
 	public int NUM_ROWS = 8;
 	public int NUM_COLS = 10;
-	public string UNIT_SQUARE_NAME = "UNIT_CUBE";
-	public string GROUND_OBJ_NAME = "ground";
+	public GameObject UNIT_SIZE_CUBE;
 	public GameObject ENVIRONMENT_OBJ;
 
 
 	private UMouseGrid mgrid;
-	private USquareGridGame game;
-	private USquareGridSelector selector;
 	private UUIManager ui_mgr;
 	private PrefabCache prefab_cache;
+
+	private USquareGridGame game;
+	private USquareGridSelector selector;
+	private USquareGridSquare prev_square;
 
 	private enum SelectContext {
 		ACTIVE_UNIT,
@@ -26,6 +27,7 @@ public class UGame : MonoBehaviour {
 	private delegate void SelectAction(USquareGridSquare us);
 	private UGame.SelectContext select_context;	
 	private UGame.SelectAction curr_select_action;
+	private bool input_enabled;
 
 	// Use this for initialization
 	void Start () {
@@ -36,11 +38,8 @@ public class UGame : MonoBehaviour {
 		g = (GameObject)GameObject.Find ("level_globals");
 		this.ui_mgr = (UUIManager)g.GetComponent("UUIManager");
 
-		g = (GameObject)GameObject.Find (this.UNIT_SQUARE_NAME);
 		this.game = new USquareGridGame(this.prefab_cache, this.NUM_ROWS, this.NUM_COLS, 
-		                                g.renderer.bounds.size.x);
-
-		g = (GameObject)GameObject.Find (this.GROUND_OBJ_NAME);
+		                                this.UNIT_SIZE_CUBE.renderer.bounds.size.x);
 
 		/* iterating through transform doesn't work well with linq */
 		var environment_objs = new List<GameObject>();
@@ -50,6 +49,7 @@ public class UGame : MonoBehaviour {
 		this.mgrid = new UMouseGrid(this.game.UGrid, environment_objs);
 
 		this.InitSelector();
+		this.input_enabled = true;
 	}
 
 	void InitSelector() {	
@@ -60,10 +60,15 @@ public class UGame : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-		if (Input.GetMouseButtonDown(UKeyBinds.LEFT_CLICK)) {
-			this.curr_select_action(this.mgrid.FindSquare(Input.mousePosition));
-		} else if (Input.GetMouseButtonDown(UKeyBinds.RIGHT_CLICK)) {
-			this.RightSelectedSquare(this.mgrid.FindSquare(Input.mousePosition));
+		USquareGridSquare us;
+
+		if (this.input_enabled) {
+			if (Input.GetMouseButtonDown(UKeyBinds.LEFT_CLICK)) {
+				us = this.mgrid.FindSquare(Input.mousePosition);
+				this.curr_select_action(us);
+			} else if (Input.GetMouseButtonDown(UKeyBinds.RIGHT_CLICK)) {
+				this.RightSelectedSquare(this.mgrid.FindSquare(Input.mousePosition));
+			}
 		}
 	}
 
@@ -84,11 +89,35 @@ public class UGame : MonoBehaviour {
 		this.UISquareSelected(us);
 		
 		unit = (USquareGridUnit)us.GetPiece();
-		if ((unit != null) && (this.game.ActiveUnit == unit)) {			
+		if ((unit != null) && (this.game.UActiveUnit == unit)) {			
 			this.ui_mgr.unit_action_panel.SetActive (true);
 		}
 		
 		this.selector.SelectActiveUnit(us);
+	}
+
+	private IEnumerator MoveUnit(USquareGridUnit unit, USquareGridSquare us) {
+		var moveable = unit.GetMoveableArea(this.game.Grid);
+
+		/* disable input while waiting for move animation and cleanup */
+		this.input_enabled = false;
+
+		moveable.ResetForSearch();
+		Debug.Log ("boop---");
+		foreach (var tmp in moveable.GetPath(us)) {
+			//Debug.Log (tmp);
+			this.game.MoveUnit(unit, tmp);
+			yield return new WaitForSeconds(0.5f);
+		}
+		Debug.Log ("done---");
+		
+		this.ui_mgr.unit_action_move.button.interactable = false;
+		this.ui_mgr.unit_action_move.text.text = "Move";
+		this.selector.HighlightMoveableSquares(null);
+		this.select_context = UGame.SelectContext.ACTIVE_UNIT;
+		this.curr_select_action = this.SelectActiveUnit;
+
+		this.input_enabled = true;
 	}
 
 	private void SelectMoveTarget(USquareGridSquare us) {
@@ -98,29 +127,43 @@ public class UGame : MonoBehaviour {
 
 		this.UISquareSelected(us);
 
-		/* FIXME: check if legal move */
-		this.selector.SelectMoveTarget(us);
+		if (this.prev_square == us) {
+			this.StartCoroutine(this.MoveUnit(this.game.UActiveUnit, us));
+		} else {
+			if (this.game.CanMoveTo(this.game.UActiveUnit, us)) {
+				this.selector.SelectMoveTarget(us);
+				this.prev_square = us;
+			}
+		}
 	}
 	
 	public void RightSelectedSquare(USquareGridSquare us) {
 	}
-
-	/* FIXME: ugly, clean up later */
-	private bool is_move_active = false;
+	
 	public void UIMoveButton() {
-		this.is_move_active = !this.is_move_active;
-		if (this.is_move_active) {
+		if (!this.input_enabled) {
+			return;
+		}
+
+		if (this.select_context == UGame.SelectContext.MOVE) {
+			this.ui_mgr.unit_action_move.text.text = "Move";
+			this.selector.HighlightMoveableSquares(null);
+			
+			this.select_context = UGame.SelectContext.ACTIVE_UNIT;
+			this.curr_select_action = this.SelectActiveUnit;
+		} else if (this.select_context == UGame.SelectContext.ACTIVE_UNIT) {
 			this.ui_mgr.unit_action_move.text.text = "Cancel";
-			this.selector.HighlightMoveableSquares(this.game.GetMoveableArea());
+			this.selector.HighlightMoveableSquares(this.game.UGetMoveableArea(
+				(USquareGridUnit)this.game.ActiveUnit));
 
 			this.select_context = UGame.SelectContext.MOVE;
 			this.curr_select_action = this.SelectMoveTarget;
-		} else {
-			this.ui_mgr.unit_action_move.text.text = "Move";
-			this.selector.HighlightMoveableSquares(null);
+		}
+	}
 
-			this.select_context = UGame.SelectContext.ACTIVE_UNIT;
-			this.curr_select_action = this.SelectActiveUnit;
+	public void UIEndTurnButton() {
+		if (!this.input_enabled) {
+			return;
 		}
 	}
 }

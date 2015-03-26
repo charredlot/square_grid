@@ -4,6 +4,8 @@ public class SquareGridSquare {
 	public readonly int Row;
 	public readonly int Col;
 	public readonly int Height;
+	public readonly GraphableMixin<SquareGridSquare> Vertex;
+	public readonly GraphableMixin<SquareGridSquare> TmpVertex;
 
 	private List<SquareGridUnit> pieces;
 	
@@ -12,9 +14,12 @@ public class SquareGridSquare {
 		this.Col = col;
 		this.Height = height;
 		this.pieces = new List<SquareGridUnit>();
+
+		this.Vertex = new GraphableMixin<SquareGridSquare>(this);
+		this.TmpVertex = new GraphableMixin<SquareGridSquare>(this);
 	}
 	
-	public void AddPiece(SquareGridUnit piece)
+	public void AddUnit(SquareGridUnit piece)
 	{
 		this.pieces.Add(piece);
 	}

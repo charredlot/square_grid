@@ -28,6 +28,36 @@ public class SquareGrid {
 				this.squares[row, col] = this.AllocSquare(row, col);
 			}
 		}
+
+		for (row=0; row<this.num_rows; row++) {
+			for (col=0; col<this.num_cols; col++) {
+				SquareGridSquare curr;
+				SquareGridSquare adj;
+
+				curr = this.squares[row, col];
+
+				/* ugh just ugly for now */
+				adj = this.GetSquare(row - 1, col);
+				if (adj != null) {
+					curr.Vertex.AddAdjacent(adj.Vertex);
+				}
+
+				adj = this.GetSquare(row + 1, col);
+				if (adj != null) {
+					curr.Vertex.AddAdjacent(adj.Vertex);
+				}
+
+				adj = this.GetSquare(row, col - 1);
+				if (adj != null) {
+					curr.Vertex.AddAdjacent(adj.Vertex);
+				}
+
+				adj = this.GetSquare(row, col + 1);
+				if (adj != null) {
+					curr.Vertex.AddAdjacent(adj.Vertex);
+				}
+			}
+		}
 	}
 
 	protected virtual SquareGridSquare AllocSquare(int row, int col) {
@@ -45,6 +75,16 @@ public class SquareGrid {
 		
 		return this.squares[row, col];
 	}
+
+	public bool MoveUnit(SquareGridUnit unit, SquareGridSquare s) {
+		if (s == null) {
+			return false;
+		}
+
+		s.AddUnit(unit);
+		unit.Moved (s);
+		return true;
+	}
 	
 	public bool MoveUnit(SquareGridUnit piece, int row, int col) {
 		SquareGridSquare s = this.GetSquare(row, col);
@@ -53,22 +93,15 @@ public class SquareGrid {
 			return false;
 		}
 
-		if (piece.CanMoveTo(s)) {
-			s.AddPiece(piece);
-			piece.Moved(s);
-			return true;
-		} else {
-			return false;
-		}
+		return this.MoveUnit (piece, s);
 	}
 
 	public IEnumerable<SquareGridSquare> GetAdjacentRadius(SquareGridSquare square, int radius) {
 		int row;
 		int col;
-		var adj_list = new List<SquareGridSquare>();
 
 		if (radius == 0) {
-			return null;
+			yield break;
 		}
 
 		/**
@@ -91,12 +124,12 @@ public class SquareGrid {
 
 				adj = this.GetSquare(row, col);
 				if ((adj != null) && (adj != square)) {
-					adj_list.Add(adj);
+					yield return adj;
 				}
 			}
 		}
 
-		return adj_list;
+		yield break;
 	}
 
 	public delegate void DebugPrint(object msg);

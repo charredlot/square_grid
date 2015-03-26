@@ -17,7 +17,6 @@ public struct UUnitInit {
 
 public abstract class USquareGridUnit : SquareGridUnit {
 	private GameObject g;
-	private bool g_is_active;
 
 	public USquareGridUnit(UnitID id, PrefabCache cache, string prefab_file) : base(id) {
 		Object prefab;
@@ -25,7 +24,6 @@ public abstract class USquareGridUnit : SquareGridUnit {
 		prefab = cache.GetPrefab(prefab_file);
 		this.g = (GameObject)GameObject.Instantiate(prefab, new Vector3(0,0,0), Quaternion.identity);
 		this.g.SetActive (false);
-		this.g_is_active = false;
 	}
 
 	public override void Moved(SquareGridSquare s) {
@@ -39,10 +37,7 @@ public abstract class USquareGridUnit : SquareGridUnit {
 		new_pos.y = 2.0f;
 		this.g.transform.position = new_pos;
 
-		if (!this.g_is_active) {
-			/* not sure how expensive setactive is */
-			this.g.SetActive(true);
-			this.g_is_active = true;
-		}
+		/* not sure how expensive setactive is */
+		this.g.SetActive(true);
 	}
 }

@@ -28,6 +28,10 @@ public class UMouseGrid {
 		found = false;
 		min_distance = float.MaxValue;
 		foreach (RaycastHit hit in hits) {
+			if (!this.colliders.Contains (hit.collider)) {
+				continue;
+			}
+
 			if (!found) {
 				best_hit = hit;
 				min_distance = hit.distance;
