@@ -8,7 +8,7 @@ public class UGame : MonoBehaviour {
 	public int NUM_ROWS = 8;
 	public int NUM_COLS = 10;
 	public GameObject UNIT_SIZE_CUBE;
-	public GameObject ENVIRONMENT_OBJ;
+	public GameObject TERRAIN;
 
 
 	private UMouseGrid mgrid;
@@ -27,6 +27,7 @@ public class UGame : MonoBehaviour {
 	private delegate void SelectAction(USquareGridSquare us);
 	private UGame.SelectContext select_context;	
 	private UGame.SelectAction curr_select_action;
+	private SquareGridArea curr_move_area;
 	private bool input_enabled;
 
 	// Use this for initialization
@@ -38,15 +39,17 @@ public class UGame : MonoBehaviour {
 		g = (GameObject)GameObject.Find ("level_globals");
 		this.ui_mgr = (UUIManager)g.GetComponent("UUIManager");
 
-		this.game = new USquareGridGame(this.prefab_cache, this.NUM_ROWS, this.NUM_COLS, 
-		                                this.UNIT_SIZE_CUBE.renderer.bounds.size.x);
-
 		/* iterating through transform doesn't work well with linq */
-		var environment_objs = new List<GameObject>();
-		foreach (Transform t in this.ENVIRONMENT_OBJ.transform) {
-			environment_objs.Add(t.gameObject);
+		var terrain = new HashSet<GameObject>();
+		foreach (Transform t in this.TERRAIN.transform) {
+			terrain.Add(t.gameObject);
 		}
-		this.mgrid = new UMouseGrid(this.game.UGrid, environment_objs);
+
+		this.game = new USquareGridGame(this.prefab_cache, this.NUM_ROWS, this.NUM_COLS, 
+		                                this.UNIT_SIZE_CUBE.renderer.bounds.size.x,
+		                                terrain);
+
+		this.mgrid = new UMouseGrid(this.game.UGrid, terrain);
 
 		this.InitSelector();
 		this.input_enabled = true;
@@ -97,10 +100,8 @@ public class UGame : MonoBehaviour {
 	}
 
 	private IEnumerator MoveUnit(USquareGridUnit unit, USquareGridSquare us) {
+		/* FIXME: since our distances are so small, doesn't matter but we can cache this result earlier */
 		var moveable = unit.GetMoveableArea(this.game.Grid);
-
-		/* disable input while waiting for move animation and cleanup */
-		this.input_enabled = false;
 
 		moveable.ResetForSearch();
 		Debug.Log ("boop---");
@@ -127,13 +128,22 @@ public class UGame : MonoBehaviour {
 
 		this.UISquareSelected(us);
 
+		if (this.curr_move_area == null) {
+			Debug.Log ("arrrrrgh");
+			return;
+		}
+
+		if (!this.curr_move_area.Squares.Contains(us)) {
+			return;
+		}
+
 		if (this.prev_square == us) {
+			/* disable input while waiting for move animation and cleanup */
+			this.input_enabled = false;
 			this.StartCoroutine(this.MoveUnit(this.game.UActiveUnit, us));
 		} else {
-			if (this.game.CanMoveTo(this.game.UActiveUnit, us)) {
-				this.selector.SelectMoveTarget(us);
-				this.prev_square = us;
-			}
+			this.selector.SelectMoveTarget(us);
+			this.prev_square = us;
 		}
 	}
 	
@@ -153,8 +163,11 @@ public class UGame : MonoBehaviour {
 			this.curr_select_action = this.SelectActiveUnit;
 		} else if (this.select_context == UGame.SelectContext.ACTIVE_UNIT) {
 			this.ui_mgr.unit_action_move.text.text = "Cancel";
-			this.selector.HighlightMoveableSquares(this.game.UGetMoveableArea(
-				(USquareGridUnit)this.game.ActiveUnit));
+
+			this.curr_move_area = this.game.ActiveUnit.GetMoveableArea(this.game.Grid);
+
+			this.selector.HighlightMoveableSquares(
+				from s in this.curr_move_area.GetEnumerable() select (USquareGridSquare)s);
 
 			this.select_context = UGame.SelectContext.MOVE;
 			this.curr_select_action = this.SelectMoveTarget;

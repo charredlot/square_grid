@@ -17,12 +17,14 @@ public struct UUnitInit {
 
 public abstract class USquareGridUnit : SquareGridUnit {
 	private GameObject g;
+	private float half_height;
 
 	public USquareGridUnit(UnitID id, PrefabCache cache, string prefab_file) : base(id) {
 		Object prefab;
 
 		prefab = cache.GetPrefab(prefab_file);
 		this.g = (GameObject)GameObject.Instantiate(prefab, new Vector3(0,0,0), Quaternion.identity);
+		this.half_height = this.g.collider.bounds.extents.y;
 		this.g.SetActive (false);
 	}
 
@@ -34,7 +36,7 @@ public abstract class USquareGridUnit : SquareGridUnit {
 	
 		/* need to put the piece on the top of the background (TODO: gravity?) */
 		new_pos = us.WorldCenterCoords;
-		new_pos.y = 2.0f;
+		new_pos.y = new_pos.y + this.half_height;
 		this.g.transform.position = new_pos;
 
 		/* not sure how expensive setactive is */

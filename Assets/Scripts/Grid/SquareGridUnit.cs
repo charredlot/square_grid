@@ -23,33 +23,62 @@ public abstract class SquareGridUnit : UnitSchedulable {
 	{
 	}
 
+	protected bool CanMoveAdjacent(SquareGridSquare curr, SquareGridSquare adj) {
+		return (this.jump_range >= System.Math.Abs(adj.Height - curr.Height));
+	}
+
 	public virtual SquareGridArea GetMoveableArea(SquareGrid grid) {
 		HashSet<SquareGridSquare> in_range;
+		Queue<SquareGridSquare> q;
+		int depth;
+		int max_depth;
+		int squares_in_next_depth;
+		int squares_in_curr_depth;
 
 		/* meh improve later */
 		in_range = new HashSet<SquareGridSquare>();
-
-		/* clear all the tmp vertex and build the hashset */
 		foreach (var s in grid.GetAdjacentRadius(this.square, this.move_range)) {
-			in_range.Add(s);
 			s.TmpVertex.Reset();
 		}
 
-		/* connect everything together for the graph */
-		foreach (var s in in_range) {
+		/* TODO: try to abstract the bfs into GraphableMixin */
+
+			
+		depth = 0;
+		max_depth = this.move_range;
+		squares_in_curr_depth = 1;
+		squares_in_next_depth = 0;
+
+		this.square.TmpVertex.Reset();
+		this.square.TmpVertex.score = 1; // discovered
+		q = new Queue<SquareGridSquare>();
+		q.Enqueue(this.square);
+
+		while (q.Count > 0) {
+			var s = q.Dequeue();
+
 			foreach (var adj in s.Vertex.Adjacent) {
-				if (in_range.Contains(adj)) {
-					/* TODO: jump check */
+				/* see ResetForSearch for what the undiscovered score is */
+				if ((adj.TmpVertex.score != 1) &&
+					this.CanMoveAdjacent(s, adj)) {
+
 					s.TmpVertex.AddAdjacent(adj.TmpVertex);
+					adj.TmpVertex.score = 1; // discovered
+
+					q.Enqueue (adj);
+					in_range.Add (adj);
+					squares_in_next_depth += 1;
 				}
 			}
-		}
 
-		/* add everything from unit's current position as special case */
-		foreach (var adj in this.square.Vertex.Adjacent) {
-			if (in_range.Contains(adj)) {
-				this.square.TmpVertex.AddAdjacent(adj.TmpVertex);
-				adj.TmpVertex.AddAdjacent(this.square.TmpVertex);
+			squares_in_curr_depth -= 1;
+			if (squares_in_curr_depth == 0) {
+				squares_in_curr_depth = squares_in_next_depth;
+				squares_in_next_depth = 0;
+				depth += 1;
+				if (depth >= max_depth) {
+					break;
+				}
 			}
 		}
 

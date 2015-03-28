@@ -11,7 +11,7 @@ public class GraphableMixin<T> {
 
 	/* for A-star and dijkstra's */
 	protected GraphableMixin<T> prev;
-	protected float score;
+	public float score; // TODO: make it private when we move bfs inside 
 
 	private List<GraphableMixin<T>> adjacent_m;
 
@@ -27,6 +27,7 @@ public class GraphableMixin<T> {
 		this.score = int.MaxValue;
 	}
 
+	/* djikstra's */
 	public IEnumerable<GraphableMixin<T>> GetPathTo(
 		IEnumerable<GraphableMixin<T>> vertices, GraphableMixin<T> dst) {
 		GraphableMixin<T> curr;
@@ -34,6 +35,7 @@ public class GraphableMixin<T> {
 
 		this.score = 0;
 		this.prev = null;
+		all.Add (this);
 		all.Sort (delegate(GraphableMixin<T> l, GraphableMixin<T> r) {
 			return l.score.CompareTo(r.score);
 		});
@@ -66,30 +68,6 @@ public class GraphableMixin<T> {
 			curr = curr.prev;
 		} while (curr != null);
 		return s;
-	}
-
-	public void GetShortestPath(
-		IEnumerable<GraphableMixin<T>> vertices,
-		GraphableMixin<T> src, GraphableMixin<T> dst) {
-		var heap = new BinaryHeap<GraphableMixin<T>>(vertices);
-
-		src.score = 0; // src distance starts at 0, assume everyone's been inited
-
-		while (heap.Count > 0) {
-			GraphableMixin<T> curr;
-
-			curr = heap.PopRoot();
-			foreach (var m in curr.adjacent_m) {
-				float dist;
-
-				/* TODO: some delegate to calculate distance */
-				dist = (float)curr.score + 1;
-				if (dist < m.score) {
-					m.score = dist;
-					m.prev = curr;
-				}
-			}
-		}
 	}
 
 	public void Reset() {

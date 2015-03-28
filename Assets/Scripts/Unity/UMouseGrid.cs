@@ -5,48 +5,26 @@ using System.Linq;
 public class UMouseGrid {
 	public float RAY_DISTANCE_MAX = 20.0f;
 	
-	private HashSet<Collider> colliders;
+	private HashSet<GameObject> terrain;
 	private USquareGrid grid;
 	
-	public UMouseGrid(USquareGrid grid, IEnumerable<GameObject> terrain) {
+	public UMouseGrid(USquareGrid grid, HashSet<GameObject> terrain) {
 		this.grid = grid;
-		this.colliders = new HashSet<Collider>(from g in terrain select g.collider);
+		this.terrain = terrain;
+	}
+
+	public bool RaycastHitMatches(RaycastHit hit) {
+		return this.terrain.Contains(hit.collider.gameObject);
 	}
 
 	public USquareGridSquare FindSquare(Vector3 mouse_pos) {
 		var ray = Camera.main.ScreenPointToRay(mouse_pos);
-		RaycastHit[] hits;
-		RaycastHit best_hit = new RaycastHit();
-		float min_distance;
-		bool found;
-
-		hits = Physics.RaycastAll(ray);
-		if (hits.Length == 0) {
+		RaycastHit best_hit;
+		best_hit = Hacks.GetRaycastClosest(ray, this.RaycastHitMatches); 
+		if (best_hit.Equals(default(RaycastHit))) {
 			return null;
+		} else {
+			return this.grid.GetSquare(best_hit.point);		
 		}
-
-		found = false;
-		min_distance = float.MaxValue;
-		foreach (RaycastHit hit in hits) {
-			if (!this.colliders.Contains (hit.collider)) {
-				continue;
-			}
-
-			if (!found) {
-				best_hit = hit;
-				min_distance = hit.distance;
-				found = true;
-			} else if (hit.distance < min_distance) {
-				best_hit = hit;
-				min_distance = hit.distance;
-			}
-		}
-
-		if (!found) {
-			return null;
-		}
-
-		// Debug.Log (best_hit.collider.gameObject);
-		return this.grid.GetSquare(best_hit.point);
 	}
 }

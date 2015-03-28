@@ -14,8 +14,10 @@ public class USquareGridGame : SquareGridGame {
 	
 	private PrefabCache prefab_cache;
 
-	public USquareGridGame(PrefabCache cache, int num_rows, int num_cols, float square_len) {
-		this.grid = new USquareGrid(num_rows, num_cols, square_len);
+	public USquareGridGame(PrefabCache cache, int num_rows, int num_cols,
+	                       float square_len,
+	                       HashSet<GameObject> terrain) {
+		this.grid = new USquareGrid(num_rows, num_cols, square_len, terrain);
 		this.prefab_cache = cache;
 		this.SetupPieces(USquareGridGame.START_PIECES);
 
@@ -43,7 +45,7 @@ public class USquareGridGame : SquareGridGame {
 		get { return (USquareGridUnit)this.ActiveUnit; }
 	}
 
-	public IEnumerable<USquareGridSquare> UGetMoveableArea(USquareGridUnit unit) {
+	public IEnumerable<USquareGridSquare> UGetMoveableSquares(USquareGridUnit unit) {
 		foreach (var s in unit.GetMoveableArea(this.grid)) {
 			yield return (USquareGridSquare)s;
 		}

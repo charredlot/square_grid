@@ -8,7 +8,7 @@ public class USquareGridSquare : SquareGridSquare, ISelectable {
 
 	private USelectableMixin selectablem;
 
-	public USquareGridSquare(int row, int col, int height, Vector3 world_center_coords) : 
+	public USquareGridSquare(int row, int col, float height, Vector3 world_center_coords) : 
 		base(row, col, height) {
 		this.WorldCenterCoords = world_center_coords;
 	}

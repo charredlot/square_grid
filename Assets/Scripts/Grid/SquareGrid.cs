@@ -4,8 +4,10 @@ public class SquareGrid {
 	private SquareGridSquare[,] squares;
 	public int Rows { get { return this.num_rows; } }
 	public int Cols { get { return this.num_cols; }  }
+
 	private int num_rows;
 	private int num_cols;
+	private int mark_sequence_number = 0;
 
 	protected SquareGrid() { }
 
@@ -100,6 +102,8 @@ public class SquareGrid {
 		int row;
 		int col;
 
+		this.mark_sequence_number += 1;
+
 		if (radius == 0) {
 			yield break;
 		}
@@ -129,6 +133,18 @@ public class SquareGrid {
 			}
 		}
 
+		yield break;
+	}
+
+	public IEnumerable<SquareGridSquare> GetSquares() {
+		int row;
+		int col;
+
+		for (row=0; row<this.Rows; row++) {
+			for (col=0; col<this.Cols; col++) {
+				yield return this.squares[row, col];
+			}
+		}
 		yield break;
 	}
 
