@@ -8,7 +8,8 @@ public class USquareGridGame : SquareGridGame {
 	public PrefabCache Prefabs { get { return this.prefab_cache; } }
 	
 	public static List<UUnitInit> START_PIECES = new List<UUnitInit>(){
-		new UUnitInit(new UnitID("p1_cube"), typeof(UUnitCube), 0, 0),
+		new UUnitInit(new UnitID("p1_t"), typeof(UUnitT), 0, 0),
+		new UUnitInit(new UnitID("p1_cube"), typeof(UUnitCube), 2, 2),
 		new UUnitInit(new UnitID("p1_sphere"), typeof(UUnitSphere), 2, 4),
 	};
 	

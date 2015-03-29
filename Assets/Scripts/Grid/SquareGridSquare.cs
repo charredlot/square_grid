@@ -7,13 +7,13 @@ public class SquareGridSquare {
 	public readonly GraphableMixin<SquareGridSquare> Vertex;
 	public readonly GraphableMixin<SquareGridSquare> TmpVertex;
 
-	private List<SquareGridUnit> pieces;
+	private List<SquareGridUnit> units;
 	
 	public SquareGridSquare(int row, int col, float height=0) {
 		this.Row = row;
 		this.Col = col;
 		this.Height = SquareGridSquare.RoundHeight(height);
-		this.pieces = new List<SquareGridUnit>();
+		this.units = new List<SquareGridUnit>();
 
 		this.Vertex = new GraphableMixin<SquareGridSquare>(this);
 		this.TmpVertex = new GraphableMixin<SquareGridSquare>(this);
@@ -21,27 +21,27 @@ public class SquareGridSquare {
 	
 	public void AddUnit(SquareGridUnit piece)
 	{
-		this.pieces.Add(piece);
+		this.units.Add(piece);
 	}
 
-	public SquareGridUnit GetPiece()
+	public SquareGridUnit GetUnit()
 	{
 		/* handle multiple units later */
-		if (this.pieces.Count > 0) {
-			return this.pieces[0];
+		if (this.units.Count > 0) {
+			return this.units[0];
 		} else {
 			return null;
 		}
 	}
 	
-	public IEnumerator<SquareGridUnit> GetPieces()
+	public IEnumerator<SquareGridUnit> GetUnits()
 	{
-		return this.pieces.GetEnumerator();
+		return this.units.GetEnumerator();
 	}
 	
 	public int NumPieces()
 	{
-		return this.pieces.Count;
+		return this.units.Count;
 	}
 	
 	public override string ToString ()

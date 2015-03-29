@@ -4,6 +4,7 @@ using System.Collections.Generic;
 public interface UnitSchedulable {
 	int GetSpeed();
 	void BeginTurn();
+	void EndTurn();
 };
 
 public class UnitScheduler {
@@ -99,6 +100,8 @@ public class UnitScheduler {
 			throw new System.MissingFieldException(
 				string.Format ("Expected {0}'s turn got {1}", this.curr_unit, piece));
 		}
+
+		this.curr_unit.EndTurn ();
 
 		/* reschedule for next turn */
 		this.SchedulePiece(piece);

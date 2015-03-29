@@ -76,10 +76,16 @@ public class UGame : MonoBehaviour {
 	}
 
 	private void UISquareSelected(USquareGridSquare us) {
+		USquareGridUnit unit;
+
 		this.ui_mgr.selected_square_panel.Activate(
 			"Row: " + us.Row + 
 			"\nCol: " + us.Col + 
 			"\nHeight: " + us.Height);
+		unit = (USquareGridUnit)us.GetUnit ();
+		if (unit != null) {
+			this.ui_mgr.selected_unit_panel.Activate(unit.id.ToString ());
+		}
 	}
 
 	private void SelectActiveUnit(USquareGridSquare us) {
@@ -91,9 +97,11 @@ public class UGame : MonoBehaviour {
 
 		this.UISquareSelected(us);
 		
-		unit = (USquareGridUnit)us.GetPiece();
-		if ((unit != null) && (this.game.UActiveUnit == unit)) {			
+		unit = (USquareGridUnit)us.GetUnit();
+		if ((unit != null) && (this.game.UActiveUnit == unit)) {
 			this.ui_mgr.unit_action_panel.SetActive (true);
+			this.ui_mgr.active_unit_panel.Activate (
+				this.game.UActiveUnit.id.ToString());
 		}
 		
 		this.selector.SelectActiveUnit(us);
@@ -178,5 +186,18 @@ public class UGame : MonoBehaviour {
 		if (!this.input_enabled) {
 			return;
 		}
+
+		this.game.ActiveUnitTurnEnded ();
+
+		this.ui_mgr.active_unit_panel.Deactivate ();
+		this.ui_mgr.selected_unit_panel.Deactivate ();
+
+		this.ui_mgr.unit_action_panel.SetActive (false);
+		this.ui_mgr.unit_action_move.button.interactable = true;
+		this.ui_mgr.unit_action_move.text.text = "Move";
+
+		this.selector.HighlightMoveableSquares(null);
+		this.select_context = UGame.SelectContext.ACTIVE_UNIT;
+		this.curr_select_action = this.SelectActiveUnit;
 	}
 }

@@ -10,8 +10,8 @@ public class UUIManager : MonoBehaviour {
 	public UUIButton unit_action_end_turn;
 
 	/* for inspector */
-	public GameObject active_unit_panel;
-	public GameObject selected_unit_panel;
+	public UUIPanelInfo active_unit_panel;
+	public UUIPanelInfo selected_unit_panel;
 	public UUIPanelInfo selected_square_panel;
 
 	void Start() {
@@ -19,10 +19,10 @@ public class UUIManager : MonoBehaviour {
 			this.unit_action_panel.SetActive(false);
 		}
 		if (this.active_unit_panel != null) {
-			this.active_unit_panel.SetActive(false);
+			this.active_unit_panel.Deactivate ();
 		}
 		if (this.selected_unit_panel != null) {
-			this.selected_unit_panel.SetActive(false);
+			this.selected_unit_panel.Deactivate();
 		}
 		if (this.selected_square_panel != null) {
 			this.selected_square_panel.Deactivate();

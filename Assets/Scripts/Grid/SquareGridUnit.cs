@@ -19,9 +19,8 @@ public abstract class SquareGridUnit : UnitSchedulable {
 		this.square = target;
 	}
 
-	public virtual void BeginTurn()
-	{
-	}
+	public virtual void BeginTurn() {}
+	public virtual void EndTurn() {}
 
 	protected bool CanMoveAdjacent(SquareGridSquare curr, SquareGridSquare adj) {
 		return (this.jump_range >= System.Math.Abs(adj.Height - curr.Height));

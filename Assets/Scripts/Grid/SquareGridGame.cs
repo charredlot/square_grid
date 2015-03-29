@@ -23,4 +23,8 @@ public class SquareGridGame {
 	public bool CanMoveTo(SquareGridUnit unit, SquareGridSquare square) {
 		return true;
 	}
+
+	public void ActiveUnitTurnEnded() {
+		this.unit_scheduler.TurnEnded (this.ActiveUnit);
+	}
 }
