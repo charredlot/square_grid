@@ -75,4 +75,12 @@ public class USquareGridSelector {
 			}
 		}
 	}
+
+	public void Unselect(ISelectable sel) {
+		if (sel == null) {
+			return;
+		}
+
+		sel.SelectableM.Cleanup();
+	}
 }

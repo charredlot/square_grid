@@ -3,6 +3,67 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
+public struct SelectContext {
+	public enum States {
+		ACTIVE_UNIT,
+		MOVE,
+		ATTACK,
+	};
+	public delegate void SelectAction(USquareGridSquare us);
+	
+	public SelectContext.States State { get { return this.state; } }
+	public SelectContext.SelectAction Action { get { return this.action; } }
+	public SquareGridArea move_area;
+	public bool input_enabled;
+	public USquareGridSquare prev_square;
+
+	private SelectContext.States state;
+	private SelectContext.SelectAction action;
+	private USquareGridSelector selector;
+
+	public SelectContext(PrefabCache prefab_cache, 
+	                     SelectContext.States state, 
+	                     SelectContext.SelectAction action) {
+		this.selector = new USquareGridSelector(prefab_cache);
+		this.move_area = null;
+		this.prev_square = null;
+		this.input_enabled = true;
+
+
+		this.state = state;
+		this.action = action;
+	}
+
+	public void Transition(SelectContext.States state, SelectContext.SelectAction action) {
+		this.state = state;
+		this.action = action;
+
+		if ((this.move_area != null) && (SelectContext.States.MOVE != state)) {
+			/* TODO: probably pass selector the prev move_area to cleanup */
+			this.selector.HighlightMoveableSquares(null);
+			this.move_area = null;
+		}
+	}
+
+	public void SelectActiveUnit(USquareGridSquare us) {
+		this.selector.SelectActiveUnit(us);
+	}
+
+	public void HighlightMoveableArea(SquareGridArea area) {
+		if (this.move_area != null) {
+			/* TODO: clean up old area? */
+		}
+		this.move_area = area;
+		this.selector.HighlightMoveableSquares(
+			from s in area.GetEnumerable() select (USquareGridSquare)s);
+	}
+
+	public void SelectMoveTarget(USquareGridSquare us) {
+		this.selector.SelectMoveTarget(us);
+		this.prev_square = us;
+	}
+};	
+
 public class UGame : MonoBehaviour {
 	/* For inspector */
 	public int NUM_ROWS = 8;
@@ -16,19 +77,9 @@ public class UGame : MonoBehaviour {
 	private PrefabCache prefab_cache;
 
 	private USquareGridGame game;
-	private USquareGridSelector selector;
-	private USquareGridSquare prev_square;
+	
+	private SelectContext select_context;	
 
-	private enum SelectContext {
-		ACTIVE_UNIT,
-		MOVE,
-		ATTACK,
-	};
-	private delegate void SelectAction(USquareGridSquare us);
-	private UGame.SelectContext select_context;	
-	private UGame.SelectAction curr_select_action;
-	private SquareGridArea curr_move_area;
-	private bool input_enabled;
 
 	// Use this for initialization
 	void Start () {
@@ -41,9 +92,7 @@ public class UGame : MonoBehaviour {
 
 		/* iterating through transform doesn't work well with linq */
 		var terrain = new HashSet<GameObject>();
-		foreach (Transform t in this.TERRAIN.transform) {
-			terrain.Add(t.gameObject);
-		}
+		this.GetAllChildrenWithColliders(terrain, this.TERRAIN);
 
 		this.game = new USquareGridGame(this.prefab_cache, this.NUM_ROWS, this.NUM_COLS, 
 		                                this.UNIT_SIZE_CUBE.renderer.bounds.size.x,
@@ -51,24 +100,30 @@ public class UGame : MonoBehaviour {
 
 		this.mgrid = new UMouseGrid(this.game.UGrid, terrain);
 
-		this.InitSelector();
-		this.input_enabled = true;
+	
+		this.select_context = new SelectContext(this.prefab_cache,
+		                                        SelectContext.States.ACTIVE_UNIT, 
+		                                        this.SelectActiveUnit);
 	}
 
-	void InitSelector() {	
-		this.selector = new USquareGridSelector(this.prefab_cache);
-		this.select_context = UGame.SelectContext.ACTIVE_UNIT;
-		this.curr_select_action = this.SelectActiveUnit;
+	void GetAllChildrenWithColliders(HashSet<GameObject> terrain, GameObject o) {
+		foreach (Transform t in o.transform) {
+			if (t.gameObject.collider != null) {
+				terrain.Add(t.gameObject);
+			} else {
+				this.GetAllChildrenWithColliders(terrain, t.gameObject);
+			}
+		}
 	}
 	
 	// Update is called once per frame
 	void Update () {
 		USquareGridSquare us;
 
-		if (this.input_enabled) {
+		if (this.select_context.input_enabled) {
 			if (Input.GetMouseButtonDown(UKeyBinds.LEFT_CLICK)) {
 				us = this.mgrid.FindSquare(Input.mousePosition);
-				this.curr_select_action(us);
+				this.select_context.Action(us);
 			} else if (Input.GetMouseButtonDown(UKeyBinds.RIGHT_CLICK)) {
 				this.RightSelectedSquare(this.mgrid.FindSquare(Input.mousePosition));
 			}
@@ -76,16 +131,8 @@ public class UGame : MonoBehaviour {
 	}
 
 	private void UISquareSelected(USquareGridSquare us) {
-		USquareGridUnit unit;
-
-		this.ui_mgr.selected_square_panel.Activate(
-			"Row: " + us.Row + 
-			"\nCol: " + us.Col + 
-			"\nHeight: " + us.Height);
-		unit = (USquareGridUnit)us.GetUnit ();
-		if (unit != null) {
-			this.ui_mgr.selected_unit_panel.Activate(unit.id.ToString ());
-		}
+		this.ui_mgr.SelectedSquare(us);
+		this.ui_mgr.SelectedUnit ((USquareGridUnit)us.GetUnit ());
 	}
 
 	private void SelectActiveUnit(USquareGridSquare us) {
@@ -100,11 +147,10 @@ public class UGame : MonoBehaviour {
 		unit = (USquareGridUnit)us.GetUnit();
 		if ((unit != null) && (this.game.UActiveUnit == unit)) {
 			this.ui_mgr.unit_action_panel.SetActive (true);
-			this.ui_mgr.active_unit_panel.Activate (
-				this.game.UActiveUnit.id.ToString());
+			this.ui_mgr.SelectedActiveUnit(unit);
 		}
 		
-		this.selector.SelectActiveUnit(us);
+		this.select_context.SelectActiveUnit(us);
 	}
 
 	private IEnumerator MoveUnit(USquareGridUnit unit, USquareGridSquare us) {
@@ -112,21 +158,26 @@ public class UGame : MonoBehaviour {
 		var moveable = unit.GetMoveableArea(this.game.Grid);
 
 		moveable.ResetForSearch();
-		Debug.Log ("boop---");
 		foreach (var tmp in moveable.GetPath(us)) {
 			//Debug.Log (tmp);
 			this.game.MoveUnit(unit, tmp);
 			yield return new WaitForSeconds(0.5f);
 		}
-		Debug.Log ("done---");
+		Debug.Log ("---move animation done---");
 		
 		this.ui_mgr.unit_action_move.button.interactable = false;
 		this.ui_mgr.unit_action_move.text.text = "Move";
-		this.selector.HighlightMoveableSquares(null);
-		this.select_context = UGame.SelectContext.ACTIVE_UNIT;
-		this.curr_select_action = this.SelectActiveUnit;
 
-		this.input_enabled = true;
+		this.select_context.Transition (SelectContext.States.ACTIVE_UNIT, this.SelectActiveUnit);
+
+		/**
+		 * move cursor to unit's new position
+		 * TODO: since we're wiping the moveable in transition,
+		 * we have to do the select after. need to do something more elegant
+		 */
+		this.SelectActiveUnit(us);
+
+		this.select_context.input_enabled = true;
 	}
 
 	private void SelectMoveTarget(USquareGridSquare us) {
@@ -136,22 +187,21 @@ public class UGame : MonoBehaviour {
 
 		this.UISquareSelected(us);
 
-		if (this.curr_move_area == null) {
+		if (this.select_context.move_area == null) {
 			Debug.Log ("arrrrrgh");
 			return;
 		}
 
-		if (!this.curr_move_area.Squares.Contains(us)) {
+		if (!this.select_context.move_area.Squares.Contains(us)) {
 			return;
 		}
 
-		if (this.prev_square == us) {
+		if (this.select_context.prev_square == us) {
 			/* disable input while waiting for move animation and cleanup */
-			this.input_enabled = false;
+			this.select_context.input_enabled = false;
 			this.StartCoroutine(this.MoveUnit(this.game.UActiveUnit, us));
 		} else {
-			this.selector.SelectMoveTarget(us);
-			this.prev_square = us;
+			this.select_context.SelectMoveTarget(us);
 		}
 	}
 	
@@ -159,45 +209,40 @@ public class UGame : MonoBehaviour {
 	}
 	
 	public void UIMoveButton() {
-		if (!this.input_enabled) {
+		if (!this.select_context.input_enabled) {
 			return;
 		}
 
-		if (this.select_context == UGame.SelectContext.MOVE) {
+		if (this.select_context.State == SelectContext.States.MOVE) {
 			this.ui_mgr.unit_action_move.text.text = "Move";
-			this.selector.HighlightMoveableSquares(null);
-			
-			this.select_context = UGame.SelectContext.ACTIVE_UNIT;
-			this.curr_select_action = this.SelectActiveUnit;
-		} else if (this.select_context == UGame.SelectContext.ACTIVE_UNIT) {
+			this.select_context.Transition(SelectContext.States.ACTIVE_UNIT, this.SelectActiveUnit);
+		} else if (this.select_context.State == SelectContext.States.ACTIVE_UNIT) {
 			this.ui_mgr.unit_action_move.text.text = "Cancel";
 
-			this.curr_move_area = this.game.ActiveUnit.GetMoveableArea(this.game.Grid);
+			this.select_context.HighlightMoveableArea(
+				this.game.ActiveUnit.GetMoveableArea(this.game.Grid));
 
-			this.selector.HighlightMoveableSquares(
-				from s in this.curr_move_area.GetEnumerable() select (USquareGridSquare)s);
-
-			this.select_context = UGame.SelectContext.MOVE;
-			this.curr_select_action = this.SelectMoveTarget;
+			this.select_context.Transition (SelectContext.States.MOVE, this.SelectMoveTarget);
 		}
 	}
 
 	public void UIEndTurnButton() {
-		if (!this.input_enabled) {
+		if (!this.select_context.input_enabled) {
 			return;
 		}
 
+		this.select_context.Transition (SelectContext.States.ACTIVE_UNIT, this.SelectActiveUnit);
+
+		/* clean up should happen here */
 		this.game.ActiveUnitTurnEnded ();
+		/* after this, active unit is updated */
 
-		this.ui_mgr.active_unit_panel.Deactivate ();
-		this.ui_mgr.selected_unit_panel.Deactivate ();
+		this.select_context.SelectActiveUnit((USquareGridSquare)this.game.ActiveUnit.Square);
 
-		this.ui_mgr.unit_action_panel.SetActive (false);
+		this.ui_mgr.SelectedActiveUnit(this.game.UActiveUnit);
+		this.ui_mgr.SelectedUnit (this.game.UActiveUnit);
+		this.ui_mgr.unit_action_panel.SetActive (true);
 		this.ui_mgr.unit_action_move.button.interactable = true;
 		this.ui_mgr.unit_action_move.text.text = "Move";
-
-		this.selector.HighlightMoveableSquares(null);
-		this.select_context = UGame.SelectContext.ACTIVE_UNIT;
-		this.curr_select_action = this.SelectActiveUnit;
 	}
 }
